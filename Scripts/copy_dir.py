@@ -1,6 +1,7 @@
 import os
 import shutil
-import datetime
+from datetime import datetime
+import logging
 
 def copy_directory(source_dir, destination_dir):
     # Create the destination directory if it doesn't exist
@@ -19,8 +20,24 @@ def copy_directory(source_dir, destination_dir):
             # Copy file
             shutil.copy2(source_item, destination_item)
 
-# Example usage
-source_directory = '/Template'
-destination_directory = f'/TemplateCopy_{datetime.now().strftime("%y%m%d.%H%M%S")}'
+def main():
 
-copy_directory(source_directory, destination_directory)
+    # Example usage
+    model_id = datetime.now().strftime("%y%m%d.%H%M%S")
+    base_directory = os.getcwd()
+    source_directory = f'{base_directory}/Template'
+    destination_directory = f'{base_directory}/TemplateCopy_{model_id}'
+    copy_directory(source_directory, destination_directory)
+
+    logging.basicConfig(
+        filename=f'{destination_directory}/history.log', 
+        level=logging.INFO, 
+        format='%(asctime)s - %(levelname)s - %(message)s'
+    )
+    logging.info(f'Model {model_id} initialized')
+
+    logging.info(f'Log preserved')
+    logging.info(f'Checking duplicate log')
+
+if __name__ == "__main__":
+    main()
