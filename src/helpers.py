@@ -2,11 +2,11 @@ import os
 import shutil
 from datetime import datetime
 import numpy as np
-import dropbox
 import cv2
 from concurrent.futures import ThreadPoolExecutor, wait
 from tqdm import tqdm
 from getpass import getpass
+import dropbox
 
 def copy_directory_from_dropbox_fast(source_dir, destination_dir):
     dbx_access_token = getpass("Enter your DropBox access token: ")
