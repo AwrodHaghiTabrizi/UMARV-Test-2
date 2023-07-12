@@ -4,6 +4,8 @@ from datetime import datetime
 import logging
 import sys
 import json
+import nbformat
+# from nbformat.v4 import new_notebook, new_code_cell
 
 repo_dir = os.getcwd()
 
@@ -27,7 +29,7 @@ def main():
 
     model_author = "Awrod" #AHT#input("Author: ")
 
-    model_info_dir = f"{new_model_dir}/info.json"
+    model_info_dir = f"{new_model_dir}/content/info.json"
     with open(model_info_dir, 'r') as file:
         model_info = json.load(file)
     model_info['author'] = model_author
@@ -35,6 +37,22 @@ def main():
     model_info['creation_date'] = creation_date.strftime("%B %d, %Y, %H:%M:%S")
     with open(model_info_dir, 'w') as file:
         json.dump(model_info, file, indent=4)
+
+    notebook_names = [
+        "local_notebook",
+        "colab_notebook",
+        "lambda_notebook"
+    ]
+    for notebook_name in notebook_names:
+        notebook_dir = f"{new_model_dir}/src/notebooks/{notebook_name}.ipynb"
+        with open(notebook_dir, 'r') as file:
+            notebook = nbformat.read(file, as_version=4)
+        # Get the first code cell
+        cell = notebook['cells'][0]
+        # Modify the code cell content
+        cell['source'] = f'model_id = "{model_id}"'
+        with open(notebook_dir, 'w') as file:
+            nbformat.write(notebook, file)
 
 
     # logging.basicConfig(
