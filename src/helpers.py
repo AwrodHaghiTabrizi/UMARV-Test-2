@@ -56,9 +56,8 @@ def copy_directory_from_dropbox_fast(source_dir, destination_dir):
         # Wait for all tasks to complete
         wait(tasks)
 
-def copy_directory_from_dropbox_slow(source_dir, destination_dir):
-    dropbox_access_token = getpass("Enter your DropBox access token: ")
-    dbx = dropbox.Dropbox(dropbox_access_token)
+def copy_directory_from_dropbox_slow(dbx_access_token, source_dir, destination_dir):
+    dbx = dropbox.Dropbox(dbx_access_token)
 
     # Create the destination directory if it doesn't exist
     if not os.path.exists(destination_dir):
