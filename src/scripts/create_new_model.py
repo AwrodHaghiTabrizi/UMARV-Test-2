@@ -28,6 +28,7 @@ def main():
 
     model_author = "Awrod" #AHT#input("Author: ")
 
+    # Fill in info.json
     model_info_dir = f"{new_model_dir}/content/info.json"
     with open(model_info_dir, 'r') as file:
         model_info = json.load(file)
@@ -37,18 +38,24 @@ def main():
     with open(model_info_dir, 'w') as file:
         json.dump(model_info, file, indent=4)
 
-    notebook_names = [
-        "local_notebook",
-        "colab_notebook",
-        "lambda_notebook"
-    ]
+    # Add model_id to methods.py
+    methods_dir = f"{new_model_dir}/src/methods.py"
+    with open(methods_dir, "r") as file:
+        content = file.read()
+    content = content.replace(
+        '# Insert model_id here\nmodel_id = ""',
+        f'model_id = "{model_id}"'
+    )
+    with open(methods_dir, 'w') as file:
+        file.write(content)
+
+    # Add model_id to notebooks
+    notebook_names = ["local_notebook", "colab_notebook", "lambda_notebook"]
     for notebook_name in notebook_names:
         notebook_dir = f"{new_model_dir}/src/notebooks/{notebook_name}.ipynb"
         with open(notebook_dir, 'r') as file:
             notebook = nbformat.read(file, as_version=4)
-        # Get the first code cell
         cell = notebook['cells'][0]
-        # Modify the code cell content
         cell['source'] = f'model_id = "{model_id}"'
         with open(notebook_dir, 'w') as file:
             nbformat.write(notebook, file)
