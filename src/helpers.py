@@ -8,6 +8,9 @@ from tqdm import tqdm
 from getpass import getpass
 import dropbox
 
+def dummy_helpers():
+    print("dummy_helpers")
+
 def copy_directory_from_dropbox_fast(source_dir, destination_dir):
     dbx_access_token = getpass("Enter your DropBox access token: ")
     dbx = dropbox.Dropbox(dbx_access_token)

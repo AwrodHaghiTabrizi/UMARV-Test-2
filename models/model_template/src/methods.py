@@ -1,3 +1,2 @@
-def dummy_helper():
-    print("I'm a dummy helper")
-    return
+def dummy_methods():
+    print("dummy_methods")
