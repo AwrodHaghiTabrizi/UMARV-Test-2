@@ -5,7 +5,6 @@ import logging
 import sys
 import json
 import nbformat
-# from nbformat.v4 import new_notebook, new_code_cell
 
 repo_dir = os.getcwd()
 
