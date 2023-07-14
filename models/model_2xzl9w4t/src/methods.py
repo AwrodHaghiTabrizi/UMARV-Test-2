@@ -1,7 +1,7 @@
 import dropbox
 import sys
 
-model_id = "2xzl9thq"
+model_id = "2xzl9w4t"
 
 repo_dir = "/content/UMARV-Test-2"
 model_dir = f"{repo_dir}/models/model_{model_id}"
@@ -27,12 +27,12 @@ def download_datasets_from_dropbox(
     dbx_datasets_dir = '/UMARV/ML/datasets'
 
     if test_dataset:
-        dataset_dirs = ["unity/test"]
+        dataset_dirs = ["unity/test", "unity/test_2"]
 
     for dataset_dir in dataset_dirs:
 
         copy_directory_from_dropbox_slow(
-            dbx_access_token = dbx_access_token,
             source_dir = f"{dbx_datasets_dir}/{dataset_dir}",
-            destination_dir = f"/content/datasets/{dataset_dir}"
+            destination_dir = f"/content/datasets/{dataset_dir}",
+            dbx_access_token = dbx_access_token
         )
