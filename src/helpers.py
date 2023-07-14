@@ -73,7 +73,7 @@ def copy_directory_from_dropbox_slow(dbx_access_token, source_dir, destination_d
 
         if isinstance(item, dropbox.files.FolderMetadata):
             # Recursive call to copy subdirectory
-            copy_directory_from_dropbox_slow(source_item_path, destination_item_path)
+            copy_directory_from_dropbox_slow(dbx_access_token, source_item_path, destination_item_path)
         else:
             # Download image file from Dropbox
             try:
