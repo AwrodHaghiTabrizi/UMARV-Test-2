@@ -4,7 +4,8 @@ from datetime import datetime
 import numpy as np
 import cv2
 from concurrent.futures import ThreadPoolExecutor, wait
-from tqdm import tqdm
+# from tqdm import tqdm
+from tqdm.notebook import tqdm
 from getpass import getpass
 import dropbox
 
