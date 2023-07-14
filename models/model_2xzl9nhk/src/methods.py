@@ -1,7 +1,7 @@
 import dropbox
 import sys
 
-model_id = "2xzkof7e"
+model_id = "2xzl9nhk"
 
 repo_dir = "/content/UMARV-Test-2"
 model_dir = f"{repo_dir}/models/model_{model_id}"
