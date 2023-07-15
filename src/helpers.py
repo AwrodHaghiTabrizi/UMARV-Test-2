@@ -9,6 +9,56 @@ from tqdm.notebook import tqdm
 from getpass import getpass
 import dropbox
 
+def copy_directory_from_dropbox(source_dir, destination_dir, dbx_access_token=None, use_thread=False):
+    if dbx_access_token is None:
+        dbx_access_token = getpass.getpass("Enter your DropBox access token: ")
+    dbx = dropbox.Dropbox(dbx_access_token)
+
+    # Create the destination directory if it doesn't exist
+    if not os.path.exists(destination_dir):
+        os.makedirs(destination_dir)
+
+    # Retrieve the initial list of entries
+    result = dbx.files_list_folder(source_dir)
+    entries = result.entries
+
+    # Process entries in batches until all entries are fetched
+    while result.has_more:
+        result = dbx.files_list_folder_continue(result.cursor)
+        entries.extend(result.entries)
+
+    # Get the total number of items in the source directory
+    total_items = len(entries)
+
+    def download_and_save(item):
+        source_item_path = item.path_display
+        destination_item_path = os.path.join(destination_dir, os.path.basename(source_item_path))
+        description = f"Copying {source_item_path} ..."
+
+        if isinstance(item, dropbox.files.FolderMetadata):
+            # Recursive call to copy subdirectory
+            copy_directory_from_dropbox(source_item_path, destination_item_path, dbx_access_token, use_thread)
+        else:
+            # Download image file from Dropbox
+            try:
+                _, response = dbx.files_download(source_item_path)
+                content = response.content
+                nparr = np.frombuffer(content, np.uint8)
+                image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                cv2.imwrite(destination_item_path, image)
+
+            except dropbox.exceptions.ApiError as e:
+                print(f"Error retrieving image: {e}")
+
+    if use_thread:
+        # Use ThreadPoolExecutor to parallelize the processing of items
+        with ThreadPoolExecutor() as executor:
+            list(tqdm(executor.map(download_and_save, entries), total=total_items, desc=f"Copying {source_dir} :"))
+    else:
+        # Use the slow method, download and save files one by one
+        for item in tqdm(entries, total=total_items, desc=f"Copying {source_dir} :"):
+            download_and_save(item)
+
 def copy_directory_from_dropbox_fast(source_dir, destination_dir, dbx_access_token=None):
     if dbx_access_token is None:
         dbx_access_token = getpass.getpass("Enter your DropBox access token: ")

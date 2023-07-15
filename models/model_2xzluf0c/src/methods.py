@@ -3,8 +3,7 @@ import sys
 import time
 from getpass import getpass
 
-# Insert model_id here
-model_id = ""
+model_id = "2xzluf0c"
 
 repo_dir = "/content/UMARV-Test-2"
 model_dir = f"{repo_dir}/models/model_{model_id}"
