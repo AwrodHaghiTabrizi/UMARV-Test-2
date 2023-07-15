@@ -2,7 +2,7 @@ import dropbox
 import sys
 import time
 
-model_id = "2xzlu1aa"
+model_id = "2xzlu5j0"
 
 repo_dir = "/content/UMARV-Test-2"
 model_dir = f"{repo_dir}/models/model_{model_id}"
@@ -45,7 +45,7 @@ def download_datasets_from_dropbox(
 
     start_time = time.time()
 
-    dbx_datasets_dir = '/UMARV/ML/datasets_slow'
+    dbx_datasets_dir = '/UMARV/ML/datasets'
 
     if test_dataset:
         dataset_dirs = ["unity/test_2", "unity/test"]

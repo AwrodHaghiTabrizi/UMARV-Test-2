@@ -46,7 +46,7 @@ def download_datasets_from_dropbox(
 
     start_time = time.time()
 
-    dbx_datasets_dir = '/UMARV/ML/datasets_slow'
+    dbx_datasets_dir = '/UMARV/ML/datasets'
 
     if test_dataset:
         dataset_dirs = ["unity/test_2", "unity/test"]
