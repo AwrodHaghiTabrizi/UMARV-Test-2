@@ -3,7 +3,7 @@ import sys
 import time
 from getpass import getpass
 
-model_id = "2xzlugfa"
+model_id = "2xzlugw1"
 
 repo_dir = "/content/UMARV-Test-2"
 model_dir = f"{repo_dir}/models/model_{model_id}"
@@ -41,15 +41,22 @@ def download_datasets_from_dropbox(
     
         else:
 
+            print("Retrieving dataset directories from DropBox ..."")
+
             dataset_dirs = []
 
             for dataset_category in ["unity", "real_world", "benchmarks"]:
+
+                print(f"Attempting to recieve {dataset_category} datasets ...")
+
                 if dataset_category == "unity" and not unity_datasets:
                     continue
                 if dataset_category == "real_world" and not real_world_datasets:
                     continue
                 if dataset_category == "benchmarks" and not benchmarks:
                     continue
+
+            print(f"Retrieving {dataset_category} datasets ...")
 
             unity_folder_path = f"{dbx_datasets_dir}/{dataset_category}"
             result = dbx.files_list_folder(unity_folder_path)
@@ -61,6 +68,9 @@ def download_datasets_from_dropbox(
                 for entry in result.entries:
                     if isinstance(entry, dropbox.files.FolderMetadata):
                         dataset_dirs.append(f"{dataset_category}/{entry.path_display}")
+
+    print(f"Copying datasets from DropBox to /content/datasets_fast ...")
+    print(f"Dataset directories: {dataset_dirs}")
 
     for dataset_dir in dataset_dirs:
 
