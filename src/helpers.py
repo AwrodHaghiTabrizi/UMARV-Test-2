@@ -57,7 +57,9 @@ def copy_directory_from_dropbox_fast(source_dir, destination_dir):
         # Wait for all tasks to complete
         wait(tasks)
 
-def copy_directory_from_dropbox_slow(dbx_access_token, source_dir, destination_dir):
+def copy_directory_from_dropbox_slow(source_dir, destination_dir, dbx_access_token=None):
+    if dbx_access_token is None:
+        dbx_access_token = getpass("Enter your DropBox access token: ")
     dbx = dropbox.Dropbox(dbx_access_token)
 
     # Create the destination directory if it doesn't exist
@@ -77,14 +79,14 @@ def copy_directory_from_dropbox_slow(dbx_access_token, source_dir, destination_d
     total_items = len(entries)
 
     # Download files and subdirectories recursively from Dropbox
-    for item in tqdm(entries, total=total_items, desc=f"Copying {source_item_path} :"):
+    for item in tqdm(entries, total=total_items, desc=f"Copying {source_dir} :"):
         source_item_path = item.path_display
         destination_item_path = os.path.join(destination_dir, os.path.basename(source_item_path))
         description = f"Copying {source_item_path} ..."
 
         if isinstance(item, dropbox.files.FolderMetadata):
             # Recursive call to copy subdirectory
-            copy_directory_from_dropbox_slow(dbx_access_token, source_item_path, destination_item_path)
+            copy_directory_from_dropbox_slow(source_item_path, destination_item_path, dbx_access_token)
         else:
             # Download image file from Dropbox
             try:
