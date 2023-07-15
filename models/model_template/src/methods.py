@@ -28,7 +28,7 @@ def download_datasets_from_dropbox(
     dbx_datasets_dir = '/UMARV/ML/datasets'
 
     if test_dataset:
-        dataset_dirs = ["unity/test", "unity/test_2"]
+        dataset_dirs = ["unity/test_2", "unity/test"]
 
     for dataset_dir in dataset_dirs:
 

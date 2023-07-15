@@ -57,10 +57,7 @@ def copy_directory_from_dropbox_fast(source_dir, destination_dir):
         # Wait for all tasks to complete
         wait(tasks)
 
-def copy_directory_from_dropbox_slow(source_dir, destination_dir, dbx_access_token=None, pbar=None):
-    if dbx_access_token is None:
-        dbx_access_token = getpass("Enter your DropBox access token: ")
-    
+def copy_directory_from_dropbox_slow(dbx_access_token, source_dir, destination_dir):
     dbx = dropbox.Dropbox(dbx_access_token)
 
     # Create the destination directory if it doesn't exist
@@ -79,19 +76,15 @@ def copy_directory_from_dropbox_slow(source_dir, destination_dir, dbx_access_tok
     # Get the total number of items in the source directory
     total_items = len(entries)
 
-    # Use the provided progress bar or create a new one
-    if pbar is None:
-        pbar = tqdm(total=total_items)
-
     # Download files and subdirectories recursively from Dropbox
-    for item in entries:
+    for item in tqdm(entries, total=total_items, desc=f"Copying {source_item_path} :"):
         source_item_path = item.path_display
         destination_item_path = os.path.join(destination_dir, os.path.basename(source_item_path))
+        description = f"Copying {source_item_path} ..."
 
         if isinstance(item, dropbox.files.FolderMetadata):
-            # Recursive call to copy subdirectory with the existing progress bar
-            pbar.set_description(f"Copying {source_item_path}")
-            copy_directory_from_dropbox_slow(source_item_path, destination_item_path, dbx_access_token, pbar)
+            # Recursive call to copy subdirectory
+            copy_directory_from_dropbox_slow(dbx_access_token, source_item_path, destination_item_path)
         else:
             # Download image file from Dropbox
             try:
@@ -100,14 +93,9 @@ def copy_directory_from_dropbox_slow(source_dir, destination_dir, dbx_access_tok
                 nparr = np.frombuffer(content, np.uint8)
                 image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
                 cv2.imwrite(destination_item_path, image)
-                pbar.update(1)  # Update the progress bar for each file downloaded
 
             except dropbox.exceptions.ApiError as e:
                 print(f"Error retrieving image: {e}")
-
-    # Close the progress bar when finished with the current level of recursion
-    if pbar is not None:
-        pbar.close()
 
 # def copy_directory_from_dropbox_slow(dbx_access_token, source_dir, destination_dir):
 #     dbx = dropbox.Dropbox(dbx_access_token)
