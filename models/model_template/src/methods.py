@@ -29,16 +29,20 @@ def download_datasets_from_dropbox(
 
     if datasets is not None:
         dataset_dirs = datasets
+        print("datasets is not None"")
 
     else:
+        print("datasets is None"")
 
         if all_datasets:
             unity_datasets = True
             real_world_datasets = True
             benchmarks = True
+            print("all_datasets is True"")
         
-        elif (not unity_datasets) and (not real_world_datasets) and (not benchmarks):
+        if (not unity_datasets) and (not real_world_datasets) and (not benchmarks):
             dataset_dirs = ["sample/sample_dataset"]
+            print("no to all")
     
         else:
 
