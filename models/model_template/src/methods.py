@@ -42,7 +42,7 @@ def download_datasets_from_dropbox(
     
         else:
 
-            print("Retrieving dataset directories from DropBox ..."")
+            print("Retrieving dataset directories from DropBox ...")
 
             dataset_dirs = []
 
