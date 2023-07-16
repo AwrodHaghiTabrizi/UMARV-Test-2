@@ -3,7 +3,7 @@ import sys
 import time
 from getpass import getpass
 
-model_id = "2xzlvk50"
+model_id = "2xzlvoxb"
 
 repo_dir = "/content/UMARV-Test-2"
 model_dir = f"{repo_dir}/models/model_{model_id}"
@@ -66,7 +66,7 @@ def download_datasets_from_dropbox(
                 result = dbx.files_list_folder(dataset_category_dir)
                 for entry in result.entries:
                     if isinstance(entry, dropbox.files.FolderMetadata):
-                        found_dataset_dir = entry.path_display.replace("/UMARV/ML/datasets","")
+                        found_dataset_dir = entry.path_display.lower().replace(dbx_datasets_dir.lower(),"")
                         print(f"Found dataset: {found_dataset_dir}")
                         # dataset_dirs.append(f"{dataset_category}/{entry.path_display}") /UMARV/ML/datasets
                         dataset_dirs.append(found_dataset_dir)
@@ -74,7 +74,7 @@ def download_datasets_from_dropbox(
                     result = dbx.files_list_folder_continue(result.cursor)
                     for entry in result.entries:
                         if isinstance(entry, dropbox.files.FolderMetadata):
-                            found_dataset_dir = entry.path_display.replace("/UMARV/ML/datasets","")
+                            found_dataset_dir = entry.path_display.lower().replace(dbx_datasets_dir.lower(),"")
                             print(f"Found dataset: {found_dataset_dir}")
                             # dataset_dirs.append(f"{dataset_category}/{entry.path_display}") /UMARV/ML/datasets
                             dataset_dirs.append(found_dataset_dir)
