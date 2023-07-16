@@ -61,18 +61,19 @@ def download_datasets_from_dropbox(
                 if dataset_category == "benchmarks" and not benchmarks:
                     continue
 
-            print(f"Retrieving {dataset_category} datasets ...")
+                print(f"Retrieving {dataset_category} datasets ...")
 
-            unity_folder_path = f"{dbx_datasets_dir}/{dataset_category}"
-            result = dbx.files_list_folder(unity_folder_path)
-            for entry in result.entries:
-                if isinstance(entry, dropbox.files.FolderMetadata):
-                    dataset_dirs.append(f"{dataset_category}/{entry.path_display}")
-            while result.has_more:
-                result = dbx.files_list_folder_continue(result.cursor)
+                dataset_category_dir = f"{dbx_datasets_dir}/{dataset_category}"
+                result = dbx.files_list_folder(dataset_category_dir)
                 for entry in result.entries:
                     if isinstance(entry, dropbox.files.FolderMetadata):
+                        print(f"Found dataset: {entry.path_display}")
                         dataset_dirs.append(f"{dataset_category}/{entry.path_display}")
+                while result.has_more:
+                    result = dbx.files_list_folder_continue(result.cursor)
+                    for entry in result.entries:
+                        if isinstance(entry, dropbox.files.FolderMetadata):
+                            dataset_dirs.append(f"{dataset_category}/{entry.path_display}")
 
     print(f"Copying datasets from DropBox to /content/datasets_fast ...")
     print(f"Dataset directories: {dataset_dirs}")
