@@ -55,7 +55,7 @@ def main():
         notebook_dir = f"{new_model_dir}/src/notebooks/{notebook_name}.ipynb"
         with open(notebook_dir, 'r') as file:
             notebook = nbformat.read(file, as_version=4)
-        cell = notebook['cells'][0]
+        cell = notebook['cells'][3]
         cell['source'] = cell['source'].replace(
             '# Insert MODEL_ID here\nos.environ["MODEL_ID"] = ""',
             f'os.environ["MODEL_ID"] = "{model_id}"'
