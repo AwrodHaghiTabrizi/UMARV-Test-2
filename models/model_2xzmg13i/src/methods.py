@@ -12,7 +12,7 @@ def print_environment_variables():
     print(f"REPO_DIR: {os.environ['REPO_DIR']}")
     print(f"ENVIRONMENT: {os.environ['ENVIRONMENT']}")
 
-# Insert model_id here
+# # Insert model_id here
 # model_id = ""
 
 # model_dir = f"{repo_dir}/models/model_{model_id}"
@@ -59,7 +59,7 @@ def download_datasets_from_dropbox(
 
                 # Check to skip the category if not requested
                 if  not include_all_datasets and (
-                       (dataset_category == "unity" and not include_unity_datasets)
+                    (dataset_category == "unity" and not include_unity_datasets)
                     or (dataset_category == "real_world" and not include_real_world_datasets)
                     or (dataset_category == "benchmarks" and not include_benchmarks) ):
                     continue

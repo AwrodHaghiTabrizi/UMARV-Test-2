@@ -12,10 +12,10 @@ def print_environment_variables():
     print(f"REPO_DIR: {os.environ['REPO_DIR']}")
     print(f"ENVIRONMENT: {os.environ['ENVIRONMENT']}")
 
-# Insert model_id here
-model_id = ""
+# # Insert model_id here
+# model_id = ""
 
-model_dir = f"{repo_dir}/models/model_{model_id}"
+# model_dir = f"{repo_dir}/models/model_{model_id}"
 
 sys.path.append(f"{os.getenv('REPO_DIR')}/src")
 from helpers import *
@@ -48,7 +48,7 @@ def download_datasets_from_dropbox(
 
     else:
         
-        if (not include_unity_datasets) and (not include_real_world_datasets) and (not include_benchmarks):
+        if not (include_all_datasets or include_unity_datasets or include_real_world_datasets or include_benchmarks):
             dataset_dirs = ["sample/sample_dataset"]
     
         else:
@@ -59,7 +59,7 @@ def download_datasets_from_dropbox(
 
                 # Check to skip the category if not requested
                 if  not include_all_datasets and (
-                    or (dataset_category == "unity" and not include_unity_datasets)
+                    (dataset_category == "unity" and not include_unity_datasets)
                     or (dataset_category == "real_world" and not include_real_world_datasets)
                     or (dataset_category == "benchmarks" and not include_benchmarks) ):
                     continue
@@ -83,7 +83,7 @@ def download_datasets_from_dropbox(
 
         copy_directory_from_dropbox(
             source_dir = f"{dbx_datasets_dir}/{dataset_dir}",
-            destination_dir = f"{os.getenv('ROOT_DIR')}/datasets/",
+            destination_dir = f"{os.getenv('ROOT_DIR')}/datasets/{dataset_dir}",
             dbx_access_token = dbx_access_token,
             use_thread = use_thread
         )
