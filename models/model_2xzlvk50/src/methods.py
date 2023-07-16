@@ -3,7 +3,7 @@ import sys
 import time
 from getpass import getpass
 
-model_id = "2xzlvj5c"
+model_id = "2xzlvk50"
 
 repo_dir = "/content/UMARV-Test-2"
 model_dir = f"{repo_dir}/models/model_{model_id}"
@@ -66,13 +66,18 @@ def download_datasets_from_dropbox(
                 result = dbx.files_list_folder(dataset_category_dir)
                 for entry in result.entries:
                     if isinstance(entry, dropbox.files.FolderMetadata):
-                        print(f"Found dataset: {entry.path_display}")
-                        dataset_dirs.append(f"{dataset_category}/{entry.path_display}")
+                        found_dataset_dir = entry.path_display.replace("/UMARV/ML/datasets","")
+                        print(f"Found dataset: {found_dataset_dir}")
+                        # dataset_dirs.append(f"{dataset_category}/{entry.path_display}") /UMARV/ML/datasets
+                        dataset_dirs.append(found_dataset_dir)
                 while result.has_more:
                     result = dbx.files_list_folder_continue(result.cursor)
                     for entry in result.entries:
                         if isinstance(entry, dropbox.files.FolderMetadata):
-                            dataset_dirs.append(f"{dataset_category}/{entry.path_display}")
+                            found_dataset_dir = entry.path_display.replace("/UMARV/ML/datasets","")
+                            print(f"Found dataset: {found_dataset_dir}")
+                            # dataset_dirs.append(f"{dataset_category}/{entry.path_display}") /UMARV/ML/datasets
+                            dataset_dirs.append(found_dataset_dir)
 
     print(f"Copying datasets from DropBox to /content/datasets_fast ...")
     print(f"Dataset directories: {dataset_dirs}")
