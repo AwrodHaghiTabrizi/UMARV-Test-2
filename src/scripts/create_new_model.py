@@ -43,20 +43,23 @@ def main():
     with open(methods_dir, "r") as file:
         content = file.read()
     content = content.replace(
-        '# Insert model_id here\nmodel_id = ""',
-        f'model_id = "{model_id}"'
+        '# Insert MODEL_ID here\nos.environ["MODEL_ID"] = ""',
+        f'os.environ["MODEL_ID"] = "{model_id}"'
     )
     with open(methods_dir, 'w') as file:
         file.write(content)
 
     # Add model_id to notebooks
-    notebook_names = ["local_notebook", "colab_notebook", "lambda_notebook"]
+    notebook_names = ["colab_notebook", "lambda_notebook", "mac_notebook", "windows_notebook"]
     for notebook_name in notebook_names:
         notebook_dir = f"{new_model_dir}/src/notebooks/{notebook_name}.ipynb"
         with open(notebook_dir, 'r') as file:
             notebook = nbformat.read(file, as_version=4)
         cell = notebook['cells'][0]
-        cell['source'] = f'model_id = "{model_id}"'
+        cell['source'] = cell['source'].replace(
+            '# Insert MODEL_ID here\nos.environ["MODEL_ID"] = ""',
+            f'os.environ["MODEL_ID"] = "{model_id}"'
+        )
         with open(notebook_dir, 'w') as file:
             nbformat.write(notebook, file)
 
