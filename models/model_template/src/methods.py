@@ -35,14 +35,6 @@ def download_datasets_from_dropbox(
     
     dbx_datasets_dir = '/UMARV/ML/datasets'
 
-    # if environment == "colab":
-    #     repo_dir = "/content/UMARV-Test-2"
-    #     destination_dir = f"/content/datasets/{dataset_dir}"
-    # elif environment == "local":
-    #     pass
-    # elif environment == "lambda":
-    #     pass
-
     if datasets is not None:
         dataset_dirs = datasets
 
@@ -58,8 +50,8 @@ def download_datasets_from_dropbox(
             for dataset_category in ["unity", "real_world", "benchmarks"]:
 
                 # Check to skip the category if not requested
-                if  not include_all_datasets and (
-                    (dataset_category == "unity" and not include_unity_datasets)
+                if  not include_all_datasets and
+                    (  (dataset_category == "unity" and not include_unity_datasets)
                     or (dataset_category == "real_world" and not include_real_world_datasets)
                     or (dataset_category == "benchmarks" and not include_benchmarks) ):
                     continue
