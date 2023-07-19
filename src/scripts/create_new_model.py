@@ -50,7 +50,7 @@ def main():
         file.write(content)
 
     # Add model_id to notebooks
-    notebook_names = ["colab_notebook", "lambda_notebook", "mac_notebook", "windows_notebook"]
+    notebook_names = ["colab_env", "lambda_env", "mac_env", "windows_env"]
     for notebook_name in notebook_names:
         notebook_dir = f"{new_model_dir}/src/notebooks/{notebook_name}.ipynb"
         with open(notebook_dir, 'r') as file:
