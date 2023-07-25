@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from getpass import getpass
 import torch
 from torch.utils.data import Dataset, DataLoader
-from torchmetrics.classification import BinaryConfusionMatrix
+from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import train_test_split
 
 sys.path.append(f"{os.getenv('REPO_DIR')}/src")
@@ -119,108 +119,270 @@ def train_model(model, criterion, optimizer, train_dataloader):
 
 def get_performance_metrics(TN_total, FP_total, FN_total, TP_total):
 
-    accuracy = (TP_total + TN_total) / (TP_total + TN_total + FP_total + FN_total)
+    print(f'{TN_total=}\n{FP_total=}\n{FN_total=}\n{TP_total=}')
 
-    if (TN_total+FP_total == 0):
-        TN_rate = None
-        FP_rate = None
-    else:
-        TN_rate = TN_total / (TN_total + FP_total)
-        FP_rate = FP_total / (TN_total + FP_total)
+    epsilon = 1e-8
 
-    if (TP_total+FP_total == 0):
-        precision = None
-    else:
-        precision = TP_total / (TP_total + FP_total)
+    tn_rate = TN_total / (TN_total + FP_total + epsilon)
+    fp_rate = FP_total / (TN_total + FP_total + epsilon)
+    tp_rate = TP_total / (TP_total + FN_total + epsilon)
+    fn_rate = FN_total / (TP_total + FN_total + epsilon)
 
-    if (TP_total+FN_total == 0):
-        recall = None
-    else:
-        recall = TP_total / (TP_total + FN_total)
+    accuracy = (TN_total + TP_total) / (TN_total + FP_total + FN_total + TP_total)
+    precision = TP_total / (TP_total + FP_total + epsilon)
+    recall = TP_total / (TP_total + FN_total + epsilon)
+    specificity = TN_total / (TN_total + FP_total + epsilon)
+    f1_score = 2 * (precision * recall) / (precision + recall + epsilon)
 
-    if(TP == 0):
-        f1_score = 0
-    else:
-        f1_score = 2 * precision * recall / (precision + recall)
+    iou_lane = TP_total / (TP_total + FP_total + FN_total + epsilon)
+    iou_background = TN_total / (TN_total + FP_total + FN_total + epsilon)
+    m_iou = (iou_lane + iou_background) / 2
 
-    #Add AUC - ROC Curve
+    total_pixels = TN_total + FP_total + FN_total + TP_total
+    pixel_accuracy = (TN_total + TP_total) / (total_pixels + epsilon)
+    mean_pixel_accuracy = (iou_lane + iou_background) / 2
+
+    class_frequency = [TP_total + FN_total, TN_total + FP_total]
+
+    fw_iou = (iou_lane * class_frequency[0] + iou_background * class_frequency[1]) / (total_pixels + epsilon)
+
+    dice_coefficient = 2 * TP_total / (2 * TP_total + FP_total + FN_total + epsilon)
+
+    boundary_f1_score = 2 * TP_total / (2 * TP_total + FP_total + FN_total + epsilon)
 
     metrics = {
-        'accuracy' : accuracy,
-        'TN_rate' : TN_rate,
-        'FP_rate' : FP_rate,
-        'precision' : precision,
-        'recall' : recall,
-        'f1_score' : f1_score
+        'TN Rate': tn_rate,
+        'FP Rate': fp_rate,
+        'TP Rate': tp_rate,
+        'FN Rate': fn_rate,
+        'Accuracy': accuracy,
+        'Precision': precision,
+        'Recall': recall,
+        'Specificity': specificity,
+        'F1 Score': f1_score,
+        'IoU Lane': iou_lane,
+        'IoU Background': iou_background,
+        'Mean IoU': m_iou,
+        'Pixel Accuracy': pixel_accuracy,
+        'Mean Pixel Accuracy': mean_pixel_accuracy,
+        'Frequency-Weighted IoU': fw_iou,
+        'Dice Coefficient': dice_coefficient,
+        'Boundary F1 Score': boundary_f1_score
     }
+
+    # accuracy = (TP_total + TN_total) / (TP_total + TN_total + FP_total + FN_total)
+
+    # if (TN_total+FP_total == 0):
+    #     TN_rate = None
+    #     FP_rate = None
+    # else:
+    #     TN_rate = TN_total / (TN_total + FP_total)
+    #     FP_rate = FP_total / (TN_total + FP_total)
+
+    # if (TP_total+FP_total == 0):
+    #     precision = None
+    # else:
+    #     precision = TP_total / (TP_total + FP_total)
+
+    # if (TP_total+FN_total == 0):
+    #     recall = None
+    # else:
+    #     recall = TP_total / (TP_total + FN_total)
+
+    # if(TP_total == 0):
+    #     f1_score = 0
+    # else:
+    #     f1_score = 2 * precision * recall / (precision + recall)
+
+    # #Add AUC - ROC Curve
+
+    # metrics = {
+    #     'accuracy' : accuracy,
+    #     'TN_rate' : TN_rate,
+    #     'FP_rate' : FP_rate,
+    #     'precision' : precision,
+    #     'recall' : recall,
+    #     'f1_score' : f1_score
+    # }
 
     return metrics
 
-
-
 # Validate the model
-def validate_model(model, val_dataloader, device):
-    model.eval()
-    confusion_matrix = BinaryConfusionMatrix().to(device)
-    TN_total = 0
-    FP_total = 0
-    FN_total = 0
-    TP_total = 0
+def validate_model(model, dataloader, device):
 
     with torch.no_grad():
-        _, data, label = next(iter(val_dataloader))
+        model.eval()
+        _, data, label = next(iter(dataloader))
         output = model(data)
 
-    [TN, FP], [FN, TP] = confusion_matrix(output[:,:,:,1],label[:,:,:,1])
-    TN_total += TN.item()
-    FP_total += FP.item()
-    FN_total += FN.item()
-    TP_total += TP.item()
-    
+        print(f'{output.shape=}')
+        print(f'{label.shape=}\n')
+        print(f'{output[0,0,0,0]=}')
+        print(f'{output[0,1,0,0]=}\n')
+        print(f'{label[0,0,0,0]=}')
+        print(f'{label[0,1,0,0]=}\n')
+
+        B, C, W, H = output.shape
+        output = output.reshape(B * W * H, C)
+        label = label.reshape(B * W * H, C)
+
+        print(f'{B*W*H=}')
+        print(f'{output.shape=}')
+        print(f'{label.shape=}\n')
+
+        output_binary = output.argmax(dim=1)
+        label_binary = label.argmax(dim=1)
+
+        print(f'{output_binary.shape=}')
+        print(f'{label_binary.shape=}\n')
+        print(f'{output_binary[0]=}')
+        print(f'{label_binary[1]=}\n')
+
+        conf_matrix = confusion_matrix(label_binary, output_binary)
+
+        TN_total = conf_matrix[0, 0]
+        FP_total = conf_matrix[0, 1]
+        FN_total = conf_matrix[1, 0]
+        TP_total = conf_matrix[1, 1]
+
+        # soft = nn.Softmax(dim=3)
+        # output_probabilities = soft(output)
+        # threshold = 0.5
+        # output_binary = (output_probabilities[:, :, :, 1] >= threshold).float()
+        # confusion_mat = confusion_matrix(label.view(-1).cpu().numpy(), output_binary.view(-1).cpu().numpy())
+        # TN, FP, FN, TP = confusion_mat.ravel()
+
+
+
+        # # Assuming output and label are your prediction and ground truth tensors, respectively
+        # softmax = nn.Softmax(dim=3)  # Create an instance of Softmax module with dim=3
+
+        # output_probabilities = softmax(output)  # Applying softmax along the channel dimension (dim=3)
+
+        # # Convert probabilities to binary predictions using thresholding (e.g., 0.5)
+        # threshold = 0.5
+        # output_binary = (output_probabilities[:, :, :, 1] >= threshold).float()
+
+        # # Make sure the label tensor is already in binary format (0 or 1)
+
+        # # Reshape output_binary to match the shape of the label tensor
+        # output_binary = output_binary.view(-1).cpu().numpy()
+
+        # confusion_mat = confusion_matrix(label.view(-1).cpu().numpy(), output_binary)
+
+        # TN, FP, FN, TP = confusion_mat.ravel()
+
+
+
+
+        # [TN, FP], [FN, TP] = confusion_matrix(output[:,:,:,1],label[:,:,:,1])
+        # TN_total += TN.item()
+        # FP_total += FP.item()
+        # FN_total += FN.item()
+        # TP_total += TP.item()
+        
     metrics = get_performance_metrics(TN_total, FP_total, FN_total, TP_total)
 
     return metrics
     
 # Validate the model
-def test_model_on_benchmarks(model, device, all_benchmarks=True, benchmarks=None, visualize_results=True):
+def test_model_on_benchmarks(model, device, all_benchmarks=True, benchmarks=None, visualize_the_results=True):
     model.eval()
 
     if all_benchmarks:
-        all_benchmark_data_dirs = glob.glob(f'{os.getenv("ROOT_DIR")}/datasets/benchmarks/*/data/*')
+        all_benchmark_data_dirs = glob.glob(f'{os.getenv("ROOT_DIR")}/datasets/benchmarks/*/data/*.jpg')
         benchmarks = []
         for benchmark_data_dir in all_benchmark_data_dirs:
-            benchmark = benchmark_data_dir.split('/')[-3]
+            # print(f"{benchmark_data_dir=}")
+            # benchmark = benchmark_data_dir.split('/')[-3]
+            benchmark = re.search(r'benchmark_\w+', benchmark_data_dir).group()
+            # print(f"{benchmark=}")
             if benchmark not in benchmarks:
                 benchmarks.append(benchmark)
     
     for benchmark in benchmarks:
         
         benchmark_data_dirs = glob.glob(f'{os.getenv("ROOT_DIR")}/datasets/benchmarks/{benchmark}/data/*')
+        
         benchmark_label_dirs = [re.sub(r'\bdata\b', 'label', data_dir) for data_dir in benchmark_data_dirs]
         benchmark_dataset = Dataset_Class(
             data_dirs=benchmark_data_dirs, label_dirs=benchmark_label_dirs, device=device, label_input_threshold=.1
         )
         benchmark_dataloader = DataLoader(benchmark_dataset, batch_size=50, shuffle=False)
 
-        confusion_matrix = BinaryConfusionMatrix().to(device)
-        TN_total = 0
-        FP_total = 0
-        FN_total = 0
-        TP_total = 0
+        # confusion_matrix = BinaryConfusionMatrix().to(device)
+        # TN_total = 0
+        # FP_total = 0
+        # FN_total = 0
+        # TP_total = 0
 
         with torch.no_grad():
             for _, data, label in benchmark_dataloader:
+
                 output = model(data)
 
-                [TN, FP], [FN, TP] = confusion_matrix(output[:, :, :, 1], label[:, :, :, 1])
-                TN_total += TN.item()
-                FP_total += FP.item()
-                FN_total += FN.item()
-                TP_total += TP.item()
+                # print(f'{output.shape=}')
+                # print(f'{label.shape=}\n')
+                # print(f'{output[0,0,0,0]=}')
+                # print(f'{output[0,1,0,0]=}\n')
+                # print(f'{label[0,0,0,0]=}')
+                # print(f'{label[0,1,0,0]=}\n')
+
+                B, C, W, H = output.shape
+                output = output.reshape(B * W * H, C)
+                label = label.reshape(B * W * H, C)
+
+                # print(f'{B*W*H=}')
+                # print(f'{output.shape=}')
+                # print(f'{label.shape=}\n')
+
+                output_binary = output.argmax(dim=1)
+                label_binary = label.argmax(dim=1)
+
+                # print(f'{output_binary.shape=}')
+                # print(f'{label_binary.shape=}\n')
+                # print(f'{output_binary[0]=}')
+                # print(f'{label_binary[1]=}\n')
+
+                conf_matrix = confusion_matrix(label_binary, output_binary)
+
+                TN_total = conf_matrix[0, 0]
+                FP_total = conf_matrix[0, 1]
+                FN_total = conf_matrix[1, 0]
+                TP_total = conf_matrix[1, 1]
+
+                # # soft = nn.Softmax(dim=3)
+                # # output_probabilities = soft(output)
+                # # threshold = 0.5
+                # # output_binary = (output_probabilities[:, :, :, 1] >= threshold).float()
+                # # confusion_mat = confusion_matrix(label.view(-1).cpu().numpy(), output_binary.view(-1).cpu().numpy())
+                # # TN, FP, FN, TP = confusion_mat.ravel()
+                # # Assuming output and label are your prediction and ground truth tensors, respectively
+                # softmax = nn.Softmax(dim=3)  # Create an instance of Softmax module with dim=3
+
+                # output_probabilities = softmax(output)  # Applying softmax along the channel dimension (dim=3)
+
+                # # Convert probabilities to binary predictions using thresholding (e.g., 0.5)
+                # threshold = 0.5
+                # output_binary = (output_probabilities[:, :, :, 1] >= threshold).float()
+
+                # # Make sure the label tensor is already in binary format (0 or 1)
+
+                # # Reshape output_binary to match the shape of the label tensor
+                # output_binary = output_binary.view(-1).cpu().numpy()
+
+                # confusion_mat = confusion_matrix(label.view(-1).cpu().numpy(), output_binary)
+
+                # TN, FP, FN, TP = confusion_mat.ravel()
+                # # [TN, FP], [FN, TP] = confusion_matrix(output[:, :, :, 1], label[:, :, :, 1])
+                # TN_total += TN.item()
+                # FP_total += FP.item()
+                # FN_total += FN.item()
+                # TP_total += TP.item()
 
         metrics = get_performance_metrics(TN_total, FP_total, FN_total, TP_total)
 
-        print(f'{benchmark} metrics: {metrics}')
+        print(f'{benchmark} metrics:')
         for metric in metrics:
             print(f'\t{metric}: {metrics[metric]:.4f}')
 
@@ -240,23 +402,22 @@ def training_loop(model, criterion, optimizer, train_dataloader, val_dataloader,
         loss_hist.append(train_loss)
         val_performance = validate_model(model, val_dataloader, device)
 
-        if val_performance['accuracy'] > best_val_performance['accuracy']:
+        if epoch == 1 or val_performance['Accuracy'] > best_val_performance['Accuracy']:
             best_val_performance = val_performance
             best_model = copy.deepcopy(model)
         else:
             epochs_since_best_val_performance += 1
         
         if auto_stop and epochs_since_best_val_performance >= auto_stop_patience:
-            print(f'Epoch: {epoch}/{num_epochs}   <>   Train Loss: {train_loss:.4f}   <>   Val Acc: {100*val_performance["accuracy"]:.2f}%')
-            print(f'Auto stop: No improvement in validation accuracy for {auto_stop_patience} epochs. Stopping training.')
+            print(f'Epoch: {epoch}/{num_epochs}   <>   Train Loss: {train_loss:.4f}   <>   Val Acc: {100*val_performance["Accuracy"]:.2f}%')
+            print(f'Training auto stopped. No improvement in validation accuracy for {auto_stop_patience} epochs.')
             break
 
         if (epoch == 1 or epoch % 5 == 0):
-            print(f'Epoch: {epoch}/{num_epochs}   <>   Train Loss: {train_loss:.4f}   <>   Val Acc: {100*val_performance["accuracy"]:.2f}%')
+            print(f'Epoch: {epoch}/{num_epochs}   <>   Train Loss: {train_loss:.4f}   <>   Val Acc: {100*val_performance["Accuracy"]:.2f}%')
 
     return best_model, loss_hist, best_val_performance
 
-#Visualize the training loss
 def visualize_loss(loss_hist):
     plt.figure()
     plt.plot(torch.tensor(loss_hist, device='cpu'))
@@ -265,18 +426,15 @@ def visualize_loss(loss_hist):
     plt.title('Loss History')
     plt.show()
 
-#Visualize the output of the model
 def visualize_results(model, dataset, device, output_threshold=.5, num_samples=5):
 
     rand_indices = random.sample(range(len(dataset)), num_samples)
-    
-    fig, axs = plt.subplots(5, 4, figsize=(13, 25))
+
+    fig, axs = plt.subplots(num_samples, 4, figsize=(13, 5*num_samples))
 
     for i, idx in enumerate(rand_indices):
-
-        # Get output
         raw_data, data, label = dataset[idx]
-        data = data.unsqueeze(0) #remove and not squeeze in plot?
+        data = data.unsqueeze(0)
         model_output = model(data)
         soft = nn.Softmax(dim=1)
         soft_output = soft(model_output)
@@ -284,7 +442,6 @@ def visualize_results(model, dataset, device, output_threshold=.5, num_samples=5
         output = torch.zeros(ones_output.shape, device=device)
         output[ones_output > output_threshold] = 1
 
-        # Plot
         axs[i, 0].imshow(raw_data.squeeze().permute(1, 2, 0).detach().cpu().numpy())
         axs[i, 0].set_title("Data")
         axs[i, 1].imshow(label.permute(1,2,0)[:,:,1].squeeze().detach().cpu().numpy(), cmap='gray')
@@ -313,7 +470,6 @@ def download_datasets_from_dropbox(
         if not (include_all_datasets or include_unity_datasets or include_real_world_datasets or include_benchmarks):
             dataset_dirs = ["sample/sample_dataset"]
             
-    
         else:
 
             dataset_dirs = []
