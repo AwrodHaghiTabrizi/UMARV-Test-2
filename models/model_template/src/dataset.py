@@ -26,11 +26,11 @@ class Dataset_Class(Dataset):
     #Initialize default transforms
     self.default_data_transform = transforms.Compose([
       transforms.ToTensor(),
-      transforms.Resize((128, 128))
+      transforms.Resize((128, 128), antialias=None)
     ])
     self.default_label_transform = transforms.Compose([
       transforms.ToTensor(),
-      transforms.Resize((128, 128)),
+      transforms.Resize((128, 128), antialias=None),
       transforms.Grayscale(1)
     ])
 
@@ -49,7 +49,7 @@ class Dataset_Class(Dataset):
 
   def __getitem__(self, idx):
     # Get data - data.shape=torch.Size([128, 128, 3])
-    data = cv2.imread(self.data_dirs[idx])
+    data = cv2.imread(self.data_dirs[idx], cv2.IMREAD_COLOR)
     data = self.default_data_transform(data)
     data = data.to(self.device)
     data_raw = data.detach().clone()
@@ -70,6 +70,6 @@ class Dataset_Class(Dataset):
     label_0[label < self.input_threshold] = 1
     label_1 = torch.zeros(label.shape, device=self.device)
     label_1[label >= self.input_threshold] = 1
-    label = torch.stack((label_0.squeeze(),label_1.squeeze()))
+    label = torch.stack((label_0.squeeze(), label_1.squeeze()))
 
     return data_raw, data, label

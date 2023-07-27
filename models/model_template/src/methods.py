@@ -1,15 +1,15 @@
 import dropbox
 import os
 import sys
-import time
 import re
 import glob
 import copy
 import matplotlib.pyplot as plt
 from getpass import getpass
+from tqdm.notebook import tqdm
 import torch
 from torch.utils.data import Dataset, DataLoader
-from torchmetrics.classification import BinaryConfusionMatrix
+from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import train_test_split
 
 sys.path.append(f"{os.getenv('REPO_DIR')}/src")
@@ -24,7 +24,9 @@ def set_device():
     if torch.cuda.is_available():
         print("Using the GPU! :)")
     else:
-        print("Could not find GPU! :'( Using CPU only.")#\nIf you want to enable GPU, please to go Edit > Notebook Settings > Hardware Accelerator and select GPU.")
+        print("Could not find GPU! :'( Using CPU only.")
+        if os.getenv('ENVIRONMENT') == "colab":
+            print("If you want to enable GPU, go to Edit > Notebook Settings > Hardware Accelerator and select GPU.")
     return device
 
 def initialize_model(device=None):
@@ -33,8 +35,11 @@ def initialize_model(device=None):
     model = lane_model().to(device)
     return model
 
-def create_datasets(device=None, datasets=None, benchmarks=None, include_all_datasets=False,
-                    include_unity_datasets=False, include_real_world_datasets=False):
+def create_datasets(device=None, datasets=None, benchmarks=None, include_all_datasets=True,
+                    include_unity_datasets=False, include_real_world_datasets=False, val_ratio=.2):
+
+    if device is None:
+        device = set_device()
 
     dataset_dir = f"{os.getenv('ROOT_DIR')}/datasets"
 
@@ -44,6 +49,9 @@ def create_datasets(device=None, datasets=None, benchmarks=None, include_all_dat
         for dataset in datasets:
             dataset_data_dirs = glob.glob(f"{dataset_dir}/{dataset}/data/*")
             all_train_val_data_dirs.extend(dataset_data_dirs)
+        if len(all_train_val_data_dirs) == 0:
+            print("No datasets found. Check that the dataset names are correct.")
+            sys.exit()
 
     else:
 
@@ -70,7 +78,7 @@ def create_datasets(device=None, datasets=None, benchmarks=None, include_all_dat
 
     # Split into train and val
     train_data_dirs, val_data_dirs, train_label_dirs, val_label_dirs = train_test_split(
-        all_train_val_data_dirs, all_train_val_label_dirs, test_size=0.2, random_state=random.randint(1, 100)
+        all_train_val_data_dirs, all_train_val_label_dirs, test_size=val_ratio, random_state=random.randint(1, 100)
     )
 
     # Get data dirs from user specified benchmarks
@@ -106,7 +114,6 @@ def create_dataloaders(train_dataset, val_dataset, benchmark_dataset, batch_size
     benchmark_dataloader = DataLoader(benchmark_dataset, batch_size=50, shuffle=False)
     return train_dataloader, val_dataloader, benchmark_dataloader
 
-# Train the model for one batch
 def train_model(model, criterion, optimizer, train_dataloader):
     model.train()
     _, data, label = next(iter(train_dataloader))
@@ -119,77 +126,85 @@ def train_model(model, criterion, optimizer, train_dataloader):
 
 def get_performance_metrics(TN_total, FP_total, FN_total, TP_total):
 
-    accuracy = (TP_total + TN_total) / (TP_total + TN_total + FP_total + FN_total)
+    epsilon = 1e-8
 
-    if (TN_total+FP_total == 0):
-        TN_rate = None
-        FP_rate = None
-    else:
-        TN_rate = TN_total / (TN_total + FP_total)
-        FP_rate = FP_total / (TN_total + FP_total)
+    tn_rate = TN_total / (TN_total + FP_total + epsilon)
+    fp_rate = FP_total / (TN_total + FP_total + epsilon)
+    tp_rate = TP_total / (TP_total + FN_total + epsilon)
+    fn_rate = FN_total / (TP_total + FN_total + epsilon)
 
-    if (TP_total+FP_total == 0):
-        precision = None
-    else:
-        precision = TP_total / (TP_total + FP_total)
+    accuracy = (TN_total + TP_total) / (TN_total + FP_total + FN_total + TP_total)
+    precision = TP_total / (TP_total + FP_total + epsilon)
+    recall = TP_total / (TP_total + FN_total + epsilon)
+    specificity = TN_total / (TN_total + FP_total + epsilon)
+    f1_score = 2 * (precision * recall) / (precision + recall + epsilon)
 
-    if (TP_total+FN_total == 0):
-        recall = None
-    else:
-        recall = TP_total / (TP_total + FN_total)
+    iou_lane = TP_total / (TP_total + FP_total + FN_total + epsilon)
+    iou_background = TN_total / (TN_total + FP_total + FN_total + epsilon)
+    m_iou = (iou_lane + iou_background) / 2
 
-    if(TP == 0):
-        f1_score = 0
-    else:
-        f1_score = 2 * precision * recall / (precision + recall)
+    total_pixels = TN_total + FP_total + FN_total + TP_total
+    pixel_accuracy = (TN_total + TP_total) / (total_pixels + epsilon)
+    mean_pixel_accuracy = (iou_lane + iou_background) / 2
 
-    #Add AUC - ROC Curve
+    class_frequency = [TP_total + FN_total, TN_total + FP_total]
+
+    fw_iou = (iou_lane * class_frequency[0] + iou_background * class_frequency[1]) / (total_pixels + epsilon)
+
+    dice_coefficient = 2 * TP_total / (2 * TP_total + FP_total + FN_total + epsilon)
+
+    boundary_f1_score = 2 * TP_total / (2 * TP_total + FP_total + FN_total + epsilon)
 
     metrics = {
-        'accuracy' : accuracy,
-        'TN_rate' : TN_rate,
-        'FP_rate' : FP_rate,
-        'precision' : precision,
-        'recall' : recall,
-        'f1_score' : f1_score
+        'TN Rate': tn_rate,
+        'FP Rate': fp_rate,
+        'TP Rate': tp_rate,
+        'FN Rate': fn_rate,
+        'Accuracy': accuracy,
+        'Precision': precision,
+        'Recall': recall,
+        'Specificity': specificity,
+        'F1 Score': f1_score,
+        'IoU Lane': iou_lane,
+        'IoU Background': iou_background,
+        'Mean IoU': m_iou,
+        'Pixel Accuracy': pixel_accuracy,
+        'Mean Pixel Accuracy': mean_pixel_accuracy,
+        'Frequency-Weighted IoU': fw_iou,
+        'Dice Coefficient': dice_coefficient,
+        'Boundary F1 Score': boundary_f1_score
     }
 
     return metrics
 
-
-
-# Validate the model
-def validate_model(model, val_dataloader, device):
-    model.eval()
-    confusion_matrix = BinaryConfusionMatrix().to(device)
-    TN_total = 0
-    FP_total = 0
-    FN_total = 0
-    TP_total = 0
-
+def validate_model(model, dataloader):
     with torch.no_grad():
-        _, data, label = next(iter(val_dataloader))
+        model.eval()
+        _, data, label = next(iter(dataloader))
         output = model(data)
+        B, C, W, H = output.shape
+        output = output.reshape(B * W * H, C)
+        label = label.reshape(B * W * H, C)
+        output_binary = output.argmax(dim=1)
+        label_binary = label.argmax(dim=1)
+        conf_matrix = confusion_matrix(label_binary, output_binary)
+        TN_total = conf_matrix[0, 0]
+        FP_total = conf_matrix[0, 1]
+        FN_total = conf_matrix[1, 0]
+        TP_total = conf_matrix[1, 1]
+        metrics = get_performance_metrics(TN_total, FP_total, FN_total, TP_total)
+        return metrics
 
-    [TN, FP], [FN, TP] = confusion_matrix(output[:,:,:,1],label[:,:,:,1])
-    TN_total += TN.item()
-    FP_total += FP.item()
-    FN_total += FN.item()
-    TP_total += TP.item()
+def test_model_on_benchmarks(model, device, all_benchmarks=True, benchmarks=None, report_the_results=True,
+                             visualize_the_results=True, verbose=True):
     
-    metrics = get_performance_metrics(TN_total, FP_total, FN_total, TP_total)
-
-    return metrics
-    
-# Validate the model
-def test_model_on_benchmarks(model, device, all_benchmarks=True, benchmarks=None, visualize_results=True):
     model.eval()
 
     if all_benchmarks:
-        all_benchmark_data_dirs = glob.glob(f'{os.getenv("ROOT_DIR")}/datasets/benchmarks/*/data/*')
+        all_benchmark_data_dirs = glob.glob(f'{os.getenv("ROOT_DIR")}/datasets/benchmarks/*/data/*.jpg')
         benchmarks = []
         for benchmark_data_dir in all_benchmark_data_dirs:
-            benchmark = benchmark_data_dir.split('/')[-3]
+            benchmark = re.search(r'benchmark_\w+', benchmark_data_dir).group()
             if benchmark not in benchmarks:
                 benchmarks.append(benchmark)
     
@@ -197,156 +212,107 @@ def test_model_on_benchmarks(model, device, all_benchmarks=True, benchmarks=None
         
         benchmark_data_dirs = glob.glob(f'{os.getenv("ROOT_DIR")}/datasets/benchmarks/{benchmark}/data/*')
         benchmark_label_dirs = [re.sub(r'\bdata\b', 'label', data_dir) for data_dir in benchmark_data_dirs]
-        benchmark_dataset = Dataset_Class(
-            data_dirs=benchmark_data_dirs, label_dirs=benchmark_label_dirs, device=device, label_input_threshold=.1
-        )
+        benchmark_dataset = Dataset_Class(data_dirs=benchmark_data_dirs, label_dirs=benchmark_label_dirs,
+                                          device=device, label_input_threshold=.1)
         benchmark_dataloader = DataLoader(benchmark_dataset, batch_size=50, shuffle=False)
-
-        confusion_matrix = BinaryConfusionMatrix().to(device)
-        TN_total = 0
-        FP_total = 0
-        FN_total = 0
-        TP_total = 0
 
         with torch.no_grad():
             for _, data, label in benchmark_dataloader:
+                model.eval()
                 output = model(data)
 
-                [TN, FP], [FN, TP] = confusion_matrix(output[:, :, :, 1], label[:, :, :, 1])
-                TN_total += TN.item()
-                FP_total += FP.item()
-                FN_total += FN.item()
-                TP_total += TP.item()
+                B, C, W, H = output.shape
+                output = output.reshape(B * W * H, C)
+                label = label.reshape(B * W * H, C)
+
+                output_binary = output.argmax(dim=1)
+                label_binary = label.argmax(dim=1)
+
+                conf_matrix = confusion_matrix(label_binary, output_binary)
+
+                TN_total = conf_matrix[0, 0]
+                FP_total = conf_matrix[0, 1]
+                FN_total = conf_matrix[1, 0]
+                TP_total = conf_matrix[1, 1]
 
         metrics = get_performance_metrics(TN_total, FP_total, FN_total, TP_total)
 
-        print(f'{benchmark} metrics: {metrics}')
-        for metric in metrics:
-            print(f'\t{metric}: {metrics[metric]:.4f}')
+        if verbose:
+            print(f'{benchmark} metrics:')
+            for metric in metrics:
+                print(f'\t{metric}: {metrics[metric]:.4f}')
 
-        visualize_results(model, benchmark_dataset, device, output_threshold=.5, num_samples=2)
+        if visualize_the_results:
+            visualize_results(model, benchmark_dataset, device, output_threshold=.5, num_samples=2)
+        
+        if report_the_results:
+            pass
 
     return
 
-#The training loop
 def training_loop(model, criterion, optimizer, train_dataloader, val_dataloader, device, num_epochs=50, auto_stop=True, auto_stop_patience=10):
 
-    loss_hist = []
-    best_val_performance = {'accuracy':-1}
+    train_loss_hist = []
+    val_performance_hist = []
     epochs_since_best_val_performance = 0
 
-    for epoch in range(1, num_epochs+1):
+    for epoch in tqdm(range(1, num_epochs+1), desc='Training', unit='epoch'):
         train_loss = train_model(model, criterion, optimizer, train_dataloader)
-        loss_hist.append(train_loss)
-        val_performance = validate_model(model, val_dataloader, device)
+        train_loss_hist.append(train_loss)
+        val_performance = validate_model(model, val_dataloader)
+        val_performance_hist.append(val_performance)
 
-        if val_performance['accuracy'] > best_val_performance['accuracy']:
-            best_val_performance = val_performance
+        if epoch == 1 or val_performance['Accuracy'] > best_val_performance['Accuracy']:
+            best_val_performance = copy.deepcopy(val_performance)
             best_model = copy.deepcopy(model)
+            epochs_since_best_val_performance = 0
         else:
             epochs_since_best_val_performance += 1
         
         if auto_stop and epochs_since_best_val_performance >= auto_stop_patience:
-            print(f'Epoch: {epoch}/{num_epochs}   <>   Train Loss: {train_loss:.4f}   <>   Val Acc: {100*val_performance["accuracy"]:.2f}%')
-            print(f'Auto stop: No improvement in validation accuracy for {auto_stop_patience} epochs. Stopping training.')
+            print(f'Epoch: {epoch}/{num_epochs}  <>  Train Loss: {train_loss:.4f}  <>  Val Acc: {100*val_performance["Accuracy"]:.2f}%  <>  Val Precision: {100*val_performance["Precision"]:.2f}%')
+            print(f'Training auto stopped. No improvement in validation accuracy for {auto_stop_patience} epochs.')
             break
 
         if (epoch == 1 or epoch % 5 == 0):
-            print(f'Epoch: {epoch}/{num_epochs}   <>   Train Loss: {train_loss:.4f}   <>   Val Acc: {100*val_performance["accuracy"]:.2f}%')
+            print(f'Epoch: {epoch}/{num_epochs}  <>  Train Loss: {train_loss:.4f}  <>  Val Acc: {100*val_performance["Accuracy"]:.2f}%  <>  Val Precision: {100*val_performance["Precision"]:.2f}%')
 
-    return best_model, loss_hist, best_val_performance
+    return best_model, train_loss_hist, val_performance_hist, best_val_performance
 
-#Visualize the training loss
-def visualize_loss(loss_hist):
+def visualize_loss(loss_hist, split=''):
     plt.figure()
     plt.plot(torch.tensor(loss_hist, device='cpu'))
     plt.xlabel('Epoch')
     plt.ylabel('Loss')
-    plt.title('Loss History')
+    plt.title(f'{split} Loss History')
     plt.show()
 
-#Visualize the output of the model
+def visualize_performance(performance_hist, split='', metrics=['Accuracy']):
+    for metric in metrics:
+        plt.figure()
+        plt.plot(torch.tensor([performance[metric] for performance in performance_hist], device='cpu'))
+        plt.xlabel('Epoch')
+        plt.ylabel(metric)
+        plt.title(f'{split} {metric} History')
+        plt.show()
+
 def visualize_results(model, dataset, device, output_threshold=.5, num_samples=5):
-
     rand_indices = random.sample(range(len(dataset)), num_samples)
-    
-    fig, axs = plt.subplots(5, 4, figsize=(13, 25))
-
+    fig, axs = plt.subplots(num_samples, 4, figsize=(12, 4*num_samples))
     for i, idx in enumerate(rand_indices):
-
-        # Get output
         raw_data, data, label = dataset[idx]
-        data = data.unsqueeze(0) #remove and not squeeze in plot?
+        data = data.unsqueeze(0)
         model_output = model(data)
         soft = nn.Softmax(dim=1)
         soft_output = soft(model_output)
-        ones_output = soft_output[0,1,:,:]
-        output = torch.zeros(ones_output.shape, device=device)
-        output[ones_output > output_threshold] = 1
-
-        # Plot
-        axs[i, 0].imshow(raw_data.squeeze().permute(1, 2, 0).detach().cpu().numpy())
+        soft_ones_output = soft_output[0,1,:,:]
+        ones_output = torch.zeros(soft_ones_output.shape, device=device)
+        ones_output[soft_ones_output > output_threshold] = 1
+        axs[i, 0].imshow(cv2.cvtColor(raw_data.detach().squeeze().permute(1,2,0).clamp(0,1).cpu().numpy(), cv2.COLOR_BGR2RGB))
         axs[i, 0].set_title("Data")
-        axs[i, 1].imshow(label.permute(1,2,0)[:,:,1].squeeze().detach().cpu().numpy(), cmap='gray')
+        axs[i, 1].imshow(label.detach().permute(1,2,0)[:,:,1].squeeze().clamp(0,1).cpu().numpy(), cmap='gray')
         axs[i, 1].set_title("Label")
-        axs[i, 2].imshow(ones_output.squeeze().detach().cpu().numpy(), cmap='gray')
+        axs[i, 2].imshow(soft_ones_output.detach().squeeze().clamp(0,1).cpu().numpy(), cmap='gray')
         axs[i, 2].set_title("Soft Output")
-        axs[i, 3].imshow(output.squeeze().detach().cpu().numpy(), cmap='gray')
-        axs[i, 3].set_title("Treshold Output")
-
-def download_datasets_from_dropbox(
-    dbx_access_token = None, use_thread = False, datasets = None,
-    include_all_datasets = False, include_unity_datasets = False,
-    include_real_world_datasets = False, include_benchmarks = False ):
-
-    if dbx_access_token is None:
-        dbx_access_token = getpass("Enter your DropBox access token: ")
-    dbx = dropbox.Dropbox(dbx_access_token)
-    
-    dbx_datasets_dir = '/UMARV/ML/datasets'
-
-    if datasets is not None:
-        dataset_dirs = datasets
-
-    else:
-        
-        if not (include_all_datasets or include_unity_datasets or include_real_world_datasets or include_benchmarks):
-            dataset_dirs = ["sample/sample_dataset"]
-            
-    
-        else:
-
-            dataset_dirs = []
-
-            for dataset_category in ["unity", "real_world", "benchmarks"]:
-
-                # Check to skip the category if not requested
-                if not include_all_datasets and (
-                    (dataset_category == "unity" and not include_unity_datasets) or
-                    (dataset_category == "real_world" and not include_real_world_datasets)
-                ):
-                    continue
-
-                # Collect dataset directories in DropBox for category
-                dataset_category_dir = f"{dbx_datasets_dir}/{dataset_category}"
-                result = dbx.files_list_folder(dataset_category_dir)
-                for entry in result.entries:
-                    if isinstance(entry, dropbox.files.FolderMetadata):
-                        found_dataset_dir = entry.path_display.lower().replace(dbx_datasets_dir.lower(),"")
-                        dataset_dirs.append(found_dataset_dir)
-                while result.has_more:
-                    result = dbx.files_list_folder_continue(result.cursor)
-                    for entry in result.entries:
-                        if isinstance(entry, dropbox.files.FolderMetadata):
-                            found_dataset_dir = entry.path_display.lower().replace(dbx_datasets_dir.lower(),"")
-                            dataset_dirs.append(found_dataset_dir)
-
-    # Download datasets
-    for dataset_dir in dataset_dirs:
-
-        copy_directory_from_dropbox(
-            source_dir = f"{dbx_datasets_dir}/{dataset_dir}",
-            destination_dir = f"{os.getenv('ROOT_DIR')}/datasets/{dataset_dir}",
-            dbx_access_token = dbx_access_token,
-            use_thread = use_thread
-        )
+        axs[i, 3].imshow(ones_output.detach().squeeze().detach().clamp(0,1).cpu().numpy(), cmap='gray')
+        axs[i, 3].set_title("Output")

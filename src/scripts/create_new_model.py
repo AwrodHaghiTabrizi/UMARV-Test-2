@@ -63,6 +63,8 @@ def main():
         with open(notebook_dir, 'w') as file:
             nbformat.write(notebook, file)
 
+    print(f"Model {model_id} initialized")
+
 
     # logging.basicConfig(
     #     filename=f'{destination_directory}/history.log', 
