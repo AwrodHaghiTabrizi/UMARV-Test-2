@@ -1,4 +1,5 @@
 import dropbox
+import json
 import os
 import sys
 import re
@@ -29,10 +30,23 @@ def set_device():
             print("If you want to enable GPU, go to Edit > Notebook Settings > Hardware Accelerator and select GPU.")
     return device
 
+def save_model_weights(model):
+    model_weights_dir = f"{os.getenv('MODEL_DIR')}/content/model_weights.pth"
+    torch.save(model.state_dict(), model_weights_dir)
+
+def load_model_weights(model):
+    model_weights_dir = f"{os.getenv('MODEL_DIR')}/content/model_weights.pth"
+    if os.path.exists(model_weights_dir):
+        model.load_state_dict(torch.load(model_weights_dir))
+    else:
+        print("No model weights found.")
+    return model
+
 def initialize_model(device=None):
     if device is None:
         device = set_device()
     model = lane_model().to(device)
+    model = load_model_weights(model)
     return model
 
 def create_datasets(device=None, datasets=None, benchmarks=None, include_all_datasets=True,
@@ -114,16 +128,6 @@ def create_dataloaders(train_dataset, val_dataset, benchmark_dataset, batch_size
     benchmark_dataloader = DataLoader(benchmark_dataset, batch_size=50, shuffle=False)
     return train_dataloader, val_dataloader, benchmark_dataloader
 
-def train_model(model, criterion, optimizer, train_dataloader):
-    model.train()
-    _, data, label = next(iter(train_dataloader))
-    optimizer.zero_grad()
-    outputs = model(data)
-    loss = criterion(outputs, label)
-    loss.backward()
-    optimizer.step()
-    return loss.item()
-
 def get_performance_metrics(TN_total, FP_total, FN_total, TP_total):
 
     epsilon = 1e-8
@@ -177,6 +181,16 @@ def get_performance_metrics(TN_total, FP_total, FN_total, TP_total):
 
     return metrics
 
+def train_model(model, criterion, optimizer, train_dataloader):
+    model.train()
+    _, data, label = next(iter(train_dataloader))
+    optimizer.zero_grad()
+    outputs = model(data)
+    loss = criterion(outputs, label)
+    loss.backward()
+    optimizer.step()
+    return loss.item()
+
 def validate_model(model, dataloader):
     with torch.no_grad():
         model.eval()
@@ -195,8 +209,39 @@ def validate_model(model, dataloader):
         metrics = get_performance_metrics(TN_total, FP_total, FN_total, TP_total)
         return metrics
 
-def test_model_on_benchmarks(model, device, all_benchmarks=True, benchmarks=None, report_the_results=True,
-                             visualize_the_results=True, verbose=True):
+def training_loop(model, criterion, optimizer, train_dataloader, val_dataloader, device, num_epochs=50, critiqueing_metric="Accuracy", auto_stop=True, auto_stop_patience=10):
+
+    train_loss_hist = []
+    val_performance_hist = []
+    epochs_since_best_val_performance = 0
+
+    for epoch in tqdm(range(1, num_epochs+1), desc='Training', unit='epoch'):
+        train_loss = train_model(model, criterion, optimizer, train_dataloader)
+        train_loss_hist.append(train_loss)
+        val_performance = validate_model(model, val_dataloader)
+        val_performance_hist.append(val_performance)
+
+        if epoch == 1 or val_performance[critiqueing_metric] > best_val_performance[critiqueing_metric]:
+            save_model_weights(model)
+            best_val_performance = copy.deepcopy(val_performance)
+            epochs_since_best_val_performance = 0
+        else:
+            epochs_since_best_val_performance += 1
+        
+        if auto_stop and epochs_since_best_val_performance >= auto_stop_patience:
+            print(f'Epoch: {epoch}/{num_epochs}  <>  Train Loss: {train_loss:.4f}  <>  Val Acc: {100*val_performance["Accuracy"]:.2f}%  <>  Val Precision: {100*val_performance["Precision"]:.2f}%')
+            print(f'Training auto stopped. No improvement in validation accuracy for {auto_stop_patience} epochs.')
+            break
+
+        if (epoch == 1 or epoch % 5 == 0 or epoch == num_epochs):
+            print(f'Epoch: {epoch}/{num_epochs}  <>  Train Loss: {train_loss:.4f}  <>  Val Acc: {100*val_performance["Accuracy"]:.2f}%  <>  Val Precision: {100*val_performance["Precision"]:.2f}%')
+
+    model = load_model_weights(model)
+
+    return model, train_loss_hist, val_performance_hist, best_val_performance
+
+def test_model_on_benchmarks(model, device, all_benchmarks=True, benchmarks=None, report_results=True,
+                             visualize_sample_results=True, print_results=True):
     
     model.eval()
 
@@ -217,69 +262,46 @@ def test_model_on_benchmarks(model, device, all_benchmarks=True, benchmarks=None
         benchmark_dataloader = DataLoader(benchmark_dataset, batch_size=50, shuffle=False)
 
         with torch.no_grad():
+            TN_total = 0
+            FP_total = 0
+            FN_total = 0
+            TP_total = 0
             for _, data, label in benchmark_dataloader:
-                model.eval()
                 output = model(data)
-
                 B, C, W, H = output.shape
                 output = output.reshape(B * W * H, C)
                 label = label.reshape(B * W * H, C)
-
                 output_binary = output.argmax(dim=1)
                 label_binary = label.argmax(dim=1)
-
                 conf_matrix = confusion_matrix(label_binary, output_binary)
-
-                TN_total = conf_matrix[0, 0]
-                FP_total = conf_matrix[0, 1]
-                FN_total = conf_matrix[1, 0]
-                TP_total = conf_matrix[1, 1]
-
+                TN_total += conf_matrix[0, 0]
+                FP_total += conf_matrix[0, 1]
+                FN_total += conf_matrix[1, 0]
+                TP_total += conf_matrix[1, 1]
+            
         metrics = get_performance_metrics(TN_total, FP_total, FN_total, TP_total)
 
-        if verbose:
-            print(f'{benchmark} metrics:')
+        if report_results:
+            model_performance_dir = f"{os.getenv('MODEL_DIR')}/content/performance.json"
+            with open(model_performance_dir, 'r') as file:
+                model_performance_json = json.load(file)
+            model_performance_json[benchmark] = metrics
+            model_performance_json[benchmark]["date_recorded"] = datetime.now().strftime("%B %d, %Y, %H:%M:%S")
+            with open(model_performance_dir, 'w') as file:
+                json.dump(model_performance_json, file, indent=4)
+            print("Results successfully reported.")
+
+        if print_results:
+            print(f'\n{benchmark} metrics:')
             for metric in metrics:
                 print(f'\t{metric}: {metrics[metric]:.4f}')
 
-        if visualize_the_results:
-            visualize_results(model, benchmark_dataset, device, output_threshold=.5, num_samples=2)
-        
-        if report_the_results:
-            pass
+        if visualize_sample_results:
+            show_sample_results(model, benchmark_dataset, device, num_samples=5)
 
     return
 
-def training_loop(model, criterion, optimizer, train_dataloader, val_dataloader, device, num_epochs=50, auto_stop=True, auto_stop_patience=10):
-
-    train_loss_hist = []
-    val_performance_hist = []
-    epochs_since_best_val_performance = 0
-
-    for epoch in tqdm(range(1, num_epochs+1), desc='Training', unit='epoch'):
-        train_loss = train_model(model, criterion, optimizer, train_dataloader)
-        train_loss_hist.append(train_loss)
-        val_performance = validate_model(model, val_dataloader)
-        val_performance_hist.append(val_performance)
-
-        if epoch == 1 or val_performance['Accuracy'] > best_val_performance['Accuracy']:
-            best_val_performance = copy.deepcopy(val_performance)
-            best_model = copy.deepcopy(model)
-            epochs_since_best_val_performance = 0
-        else:
-            epochs_since_best_val_performance += 1
-        
-        if auto_stop and epochs_since_best_val_performance >= auto_stop_patience:
-            print(f'Epoch: {epoch}/{num_epochs}  <>  Train Loss: {train_loss:.4f}  <>  Val Acc: {100*val_performance["Accuracy"]:.2f}%  <>  Val Precision: {100*val_performance["Precision"]:.2f}%')
-            print(f'Training auto stopped. No improvement in validation accuracy for {auto_stop_patience} epochs.')
-            break
-
-        if (epoch == 1 or epoch % 5 == 0):
-            print(f'Epoch: {epoch}/{num_epochs}  <>  Train Loss: {train_loss:.4f}  <>  Val Acc: {100*val_performance["Accuracy"]:.2f}%  <>  Val Precision: {100*val_performance["Precision"]:.2f}%')
-
-    return best_model, train_loss_hist, val_performance_hist, best_val_performance
-
-def visualize_loss(loss_hist, split=''):
+def graph_loss_history(loss_hist, split=''):
     plt.figure()
     plt.plot(torch.tensor(loss_hist, device='cpu'))
     plt.xlabel('Epoch')
@@ -287,7 +309,7 @@ def visualize_loss(loss_hist, split=''):
     plt.title(f'{split} Loss History')
     plt.show()
 
-def visualize_performance(performance_hist, split='', metrics=['Accuracy']):
+def graph_performance_history(performance_hist, split='', metrics=['Accuracy']):
     for metric in metrics:
         plt.figure()
         plt.plot(torch.tensor([performance[metric] for performance in performance_hist], device='cpu'))
@@ -296,7 +318,7 @@ def visualize_performance(performance_hist, split='', metrics=['Accuracy']):
         plt.title(f'{split} {metric} History')
         plt.show()
 
-def visualize_results(model, dataset, device, output_threshold=.5, num_samples=5):
+def show_sample_results(model, dataset, device, output_threshold=.5, num_samples=5):
     rand_indices = random.sample(range(len(dataset)), num_samples)
     fig, axs = plt.subplots(num_samples, 4, figsize=(12, 4*num_samples))
     for i, idx in enumerate(rand_indices):
