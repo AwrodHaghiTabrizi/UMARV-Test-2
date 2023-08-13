@@ -216,7 +216,7 @@ def validate_model(model, dataloader):
         metrics = get_performance_metrics(TN_total, FP_total, FN_total, TP_total)
         return metrics
 
-def training_loop(model, criterion, optimizer, train_dataloader, val_dataloader, dbx_access_token, num_epochs=50, critiqueing_metric="Mean Pixel Accuracy", auto_stop=True, auto_stop_patience=10):
+def training_loop(model, criterion, optimizer, train_dataloader, val_dataloader, dbx_access_token, num_epochs=50, critiqueing_metric="Accuracy", auto_stop=True, auto_stop_patience=10):
 
     train_loss_hist = []
     val_performance_hist = []
@@ -236,12 +236,12 @@ def training_loop(model, criterion, optimizer, train_dataloader, val_dataloader,
             epochs_since_best_val_performance += 1
         
         if auto_stop and epochs_since_best_val_performance >= auto_stop_patience:
-            print(f'Epoch: {epoch}/{num_epochs}  <>  Train Loss: {train_loss:.4f}  <>  Val MPA: {100*val_performance["Mean Pixel Accuracy"]:.2f}%  <>  Val Precision: {100*val_performance["Precision"]:.2f}%')
+            print(f'Epoch: {epoch}/{num_epochs}  <>  Train Loss: {train_loss:.4f}  <>  Val Acc: {100*val_performance["Accuracy"]:.2f}%  <>  Val Precision: {100*val_performance["Precision"]:.2f}%')
             print(f'Training auto stopped. No improvement in validation accuracy for {auto_stop_patience} epochs.')
             break
 
         if (epoch == 1 or epoch % 5 == 0 or epoch == num_epochs):
-            print(f'Epoch: {epoch}/{num_epochs}  <>  Train Loss: {train_loss:.4f}  <>  Val MPA: {100*val_performance["Mean Pixel Accuracy"]:.2f}%  <>  Val Precision: {100*val_performance["Precision"]:.2f}%')
+            print(f'Epoch: {epoch}/{num_epochs}  <>  Train Loss: {train_loss:.4f}  <>  Val Acc: {100*val_performance["Accuracy"]:.2f}%  <>  Val Precision: {100*val_performance["Precision"]:.2f}%')
 
     model.load_state_dict(best_model_state_dict)
     upload_model_weights(model, dbx_access_token)

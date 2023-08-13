@@ -13,7 +13,6 @@ from requests.exceptions import ChunkedEncodingError
 import urllib3.exceptions
 import requests
 
-
 def copy_directory(source_dir, destination_dir):
     if not os.path.exists(destination_dir):
         os.makedirs(destination_dir)
