@@ -34,7 +34,7 @@ def main():
     with open(model_info_dir, 'w') as file:
         json.dump(model_info, file, indent=4)
 
-    notebook_names = ["colab_env", "lambda_env", "mac_env", "windows_env", "jetson_env"]
+    notebook_names = ["colab_env", "lambdalabs_env", "mac_env", "windows_env", "jetson_env"]
     for notebook_name in notebook_names:
         notebook_dir = f"{new_model_dir}/src/notebooks/{notebook_name}.ipynb"
         with open(notebook_dir, 'r') as file:
