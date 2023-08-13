@@ -91,7 +91,7 @@ def download_datasets_from_dropbox(
     dbx_datasets_dir = '/UMARV/ML/datasets'
 
     if datasets is not None:
-        dataset_dirs = datasets
+        dataset_dirs = [f"{dbx_datasets_dir}/{dataset}" for dataset in datasets]
 
     else:
         
