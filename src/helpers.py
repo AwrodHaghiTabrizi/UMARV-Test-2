@@ -91,7 +91,7 @@ def download_datasets_from_dropbox(
     dbx_datasets_dir = '/UMARV/ML/datasets'
 
     if datasets is not None:
-        dataset_dirs = [f"{dbx_datasets_dir}/{dataset}" for dataset in datasets]
+        dataset_dirs = datasets
 
     else:
         
@@ -126,7 +126,7 @@ def download_datasets_from_dropbox(
                             dataset_dirs.append(found_dataset_dir)
 
     for dataset_dir in dataset_dirs:
-
+        print(f"{dbx_datasets_dir}/{dataset_dir}")
         copy_directory_from_dropbox(
             source_dir = f"{dbx_datasets_dir}/{dataset_dir}",
             destination_dir = f"{os.getenv('ROOT_DIR')}/datasets/{dataset_dir}",
