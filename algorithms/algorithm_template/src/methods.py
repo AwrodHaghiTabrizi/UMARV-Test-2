@@ -168,6 +168,7 @@ def show_sample_results(dataset, num_samples=5):
         data, label = dataset[idx]
         output = lane_detector(data)
         binary_output = (output > .5).astype(np.uint8)
+        output[0,0], output[0,1] = 1, 0
         axs[i, 0].imshow(cv2.cvtColor(data, cv2.COLOR_BGR2RGB))
         axs[i, 0].set_title("Data")
         axs[i, 1].imshow(label[:,:,1], cmap='gray')

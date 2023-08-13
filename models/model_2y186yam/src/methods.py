@@ -316,7 +316,7 @@ def graph_loss_history(loss_hist, split=''):
     plt.title(f'{split} Loss History')
     plt.show()
 
-def graph_performance_history(performance_hist, split='', metrics=['Accuracy']):
+def graph_performance_history(performance_hist, split='', metrics=['Mean Pixel Accuracy']):
     for metric in metrics:
         plt.figure()
         plt.plot(torch.tensor([performance[metric] for performance in performance_hist], device='cpu'))
@@ -335,9 +335,9 @@ def show_sample_results(model, dataset, device, output_threshold=.5, num_samples
         soft = nn.Softmax(dim=1)
         soft_output = soft(model_output)
         soft_ones_output = soft_output[0,1,:,:]
+        soft_ones_output[0,0], soft_ones_output[0,1] = 1, 0 # To prevent imshow from normalizing the image
         ones_output = torch.zeros(soft_ones_output.shape, device=device)
         ones_output[soft_ones_output > output_threshold] = 1
-        soft_ones_output[0,0], soft_ones_output[0,1] = 1, 0 # Prevent imshow from normalizing the image
         axs[i, 0].imshow(cv2.cvtColor(raw_data.detach().squeeze().permute(1,2,0).clamp(0,1).cpu().numpy(), cv2.COLOR_BGR2RGB))
         axs[i, 0].set_title("Data")
         axs[i, 1].imshow(label.detach().permute(1,2,0)[:,:,1].squeeze().clamp(0,1).cpu().numpy(), cmap='gray')
