@@ -267,14 +267,11 @@ def test_model_on_benchmarks(model, device, all_benchmarks=True, benchmarks=None
         benchmark_label_dirs = [re.sub(r'\bdata\b', 'label', data_dir) for data_dir in benchmark_data_dirs]
         benchmark_dataset = Dataset_Class(data_dirs=benchmark_data_dirs, label_dirs=benchmark_label_dirs,
                                           device=device, label_input_threshold=.1)
-        benchmark_dataloader = DataLoader(benchmark_dataset, batch_size=50, shuffle=False)
 
         with torch.no_grad():
-            TN_total = 0
-            FP_total = 0
-            FN_total = 0
-            TP_total = 0
-            for _, data, label in benchmark_dataloader:
+            TN_total, FP_total, FN_total, TP_total = 0, 0, 0, 0
+            for _, data, label in tqdm(benchmark_dataset, desc=f'Testing on {benchmark}', unit=' frame'):
+                data = data.unsqueeze(0) # Add batch dimension
                 output = model(data)
                 B, C, W, H = output.shape
                 output = output.reshape(B * W * H, C)
