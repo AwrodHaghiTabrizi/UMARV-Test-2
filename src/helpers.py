@@ -93,40 +93,32 @@ def download_datasets_from_dropbox(
     if datasets is not None:
         dataset_dirs = datasets
 
-    else:
-        
-        if not (include_all_datasets or include_unity_datasets or include_real_world_datasets or include_benchmarks):
-            dataset_dirs = ["sample/sample_dataset"]
+    elif not (include_all_datasets or include_unity_datasets or include_real_world_datasets or include_benchmarks):
+        dataset_dirs = ["sample/sample_dataset"]
             
-        else:
-
-            dataset_dirs = []
-
-            for dataset_category in ["unity", "real_world", "benchmarks"]:
-
-                # Check to skip the category if not requested
-                if not include_all_datasets and (
-                    (dataset_category == "unity" and not include_unity_datasets) or
-                    (dataset_category == "real_world" and not include_real_world_datasets)
-                ):
-                    continue
-
-                # Collect dataset directories in DropBox for category
-                dataset_category_dir = f"{dbx_datasets_dir}/{dataset_category}"
-                result = dbx.files_list_folder(dataset_category_dir)
+    else:
+        dataset_dirs = []
+        for dataset_category in ["unity", "real_world", "benchmarks"]:
+            # Check to skip the category if not requested
+            if not include_all_datasets and (
+                (dataset_category == "unity" and not include_unity_datasets) or
+                (dataset_category == "real_world" and not include_real_world_datasets)):
+                continue
+            # Collect dataset image directories from DropBox
+            dataset_category_dir = f"{dbx_datasets_dir}/{dataset_category}"
+            result = dbx.files_list_folder(dataset_category_dir)
+            for entry in result.entries:
+                if isinstance(entry, dropbox.files.FolderMetadata):
+                    found_dataset_dir = entry.path_display.lower().replace(dbx_datasets_dir.lower(),"")
+                    dataset_dirs.append(found_dataset_dir)
+            while result.has_more:
+                result = dbx.files_list_folder_continue(result.cursor)
                 for entry in result.entries:
                     if isinstance(entry, dropbox.files.FolderMetadata):
                         found_dataset_dir = entry.path_display.lower().replace(dbx_datasets_dir.lower(),"")
                         dataset_dirs.append(found_dataset_dir)
-                while result.has_more:
-                    result = dbx.files_list_folder_continue(result.cursor)
-                    for entry in result.entries:
-                        if isinstance(entry, dropbox.files.FolderMetadata):
-                            found_dataset_dir = entry.path_display.lower().replace(dbx_datasets_dir.lower(),"")
-                            dataset_dirs.append(found_dataset_dir)
 
     for dataset_dir in dataset_dirs:
-        print(f"{dbx_datasets_dir}/{dataset_dir}")
         copy_directory_from_dropbox(
             source_dir = f"{dbx_datasets_dir}/{dataset_dir}",
             destination_dir = f"{os.getenv('ROOT_DIR')}/datasets/{dataset_dir}",

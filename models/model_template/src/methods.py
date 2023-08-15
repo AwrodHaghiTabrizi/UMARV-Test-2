@@ -24,9 +24,9 @@ from architecture import *
 def set_device():
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     if torch.cuda.is_available():
-        print("Using the GPU! :)")
+        print("Using GPU!")
     else:
-        print("Could not find GPU! :'( Using CPU only.")
+        print("Could not find GPU! Using CPU only.")
         if os.getenv('ENVIRONMENT') == "colab":
             print("If you want to enable GPU, go to Edit > Notebook Settings > Hardware Accelerator and select GPU.")
     return device
