@@ -267,14 +267,11 @@ def test_model_on_benchmarks(model, device, all_benchmarks=True, benchmarks=None
         benchmark_label_dirs = [re.sub(r'\bdata\b', 'label', data_dir) for data_dir in benchmark_data_dirs]
         benchmark_dataset = Dataset_Class(data_dirs=benchmark_data_dirs, label_dirs=benchmark_label_dirs,
                                           device=device, label_input_threshold=.1)
-        benchmark_dataloader = DataLoader(benchmark_dataset, batch_size=50, shuffle=False)
 
         with torch.no_grad():
-            TN_total = 0
-            FP_total = 0
-            FN_total = 0
-            TP_total = 0
-            for _, data, label in benchmark_dataloader:
+            TN_total, FP_total, FN_total, TP_total = 0, 0, 0, 0
+            for _, data, label in tqdm(benchmark_dataset, desc=f'Testing on {benchmark}', unit=' frame'):
+                data = data.unsqueeze(0) # Add batch dimension
                 output = model(data)
                 B, C, W, H = output.shape
                 output = output.reshape(B * W * H, C)
@@ -296,12 +293,13 @@ def test_model_on_benchmarks(model, device, all_benchmarks=True, benchmarks=None
             model_performance_json[benchmark] = metrics
             with open(model_performance_dir, 'w') as file:
                 json.dump(model_performance_json, file, indent=4)
-            print("Results successfully reported.")
+            print("Metrics saved in performance.json.")
 
         if print_results:
             print(f'\n{benchmark} metrics:')
             for metric in metrics:
                 print(f'\t{metric}: {metrics[metric]:.4f}')
+            print()
 
         if visualize_sample_results:
             show_sample_results(model, benchmark_dataset, device, num_samples=5)
