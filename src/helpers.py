@@ -73,9 +73,9 @@ def copy_directory_from_dropbox(source_dir, destination_dir, dbx=None, dbx_acces
                 
     if use_thread:
         with ThreadPoolExecutor() as executor:
-            list(tqdm(executor.map(download_and_save, entries), total=total_items, desc=f"Downloading {source_dir} :"))
+            list(tqdm(executor.map(download_and_save, entries), total=total_items, desc=f"Downloading {source_dir} :", unit=" image"))
     else:
-        for item in tqdm(entries, total=total_items, desc=f"Downloading {source_dir} :"):
+        for item in tqdm(entries, total=total_items, desc=f"Downloading {source_dir} :", unit=" image"):
             download_and_save(item)
 
 def download_datasets_from_dropbox(
