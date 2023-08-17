@@ -1,0 +1,7 @@
+{
+    "model_name": "Basic CNN",
+    "model_description": "A basic CNN model with 3 convolutional layers and 2 fully connected layers.",
+    "author": "Awrod",
+    "model_id": "2y1a08e3",
+    "creation_date": "August 16, 2023, 20:08:27"
+}
