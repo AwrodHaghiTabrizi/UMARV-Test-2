@@ -44,15 +44,17 @@
 31. Run the script "/src/scripts/extract_label_from_roboflow.py"
 32. Extract the labels from "/parapeters/output"
 32. Create a dataset directory with the following folder structure
-/dataset
-/../data
-/../../000000.jpg
-/../../000001.jpg
-/../../000002.jpg
-/../label
-/../../000000.jpg
-/../../000001.jpg
-/../../000002.jpg
+dataset_name/ <br>
+├── data/ <br>
+│ ├── 000000.jpg <br>
+│ ├── 000001.jpg <br>
+│ ├── 000002.jpg <br>
+│ └── ...
+├── label/ <br>
+│ ├── 000000.jpg <br>
+│ ├── 000001.jpg <br>
+│ ├── 000002.jpg
+│ └── ...
 33. Export this dataset into the UMARV CV Dropbox in ".../ML/datasets/real_world".
 
 ## Unity datasets
