@@ -49,11 +49,11 @@ dataset_name/ <br>
 │ ├── 000000.jpg <br>
 │ ├── 000001.jpg <br>
 │ ├── 000002.jpg <br>
-│ └── ...
+│ └── ... <br>
 ├── label/ <br>
 │ ├── 000000.jpg <br>
 │ ├── 000001.jpg <br>
-│ ├── 000002.jpg
+│ ├── 000002.jpg <br>
 │ └── ...
 33. Export this dataset into the UMARV CV Dropbox in ".../ML/datasets/real_world".
 
