@@ -43,7 +43,7 @@
 30. Move the label folder into the UMARV-CV repo in the "/parapeters/input" directory. Should be "/parameters/input/label/..."
 31. Run the script "/src/scripts/extract_label_from_roboflow.py"
 32. Extract the labels from "/parapeters/output"
-32. Create a dataset directory with the following folder structure
+32. Create a dataset directory with the following folder structure <br>
 dataset_name/ <br>
 ├── data/ <br>
 │ ├── 000000.jpg <br>
