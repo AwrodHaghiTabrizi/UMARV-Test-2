@@ -1,6 +1,8 @@
 # Creating Datasets
 
-## Real world datasets
+## Lane Detection
+
+### Real world
 
 1. Take a high quality video going through a course.
 2. Convert the video to .mp4 if necessary.
@@ -57,6 +59,10 @@ dataset_name/ <br>
 │ └── ...
 33. Export this dataset into the UMARV CV Dropbox in ".../ML/datasets/real_world".
 
-## Unity datasets
+### Unity
+
+...
+
+## Scene Segmentation
 
 ...
