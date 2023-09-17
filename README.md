@@ -8,14 +8,14 @@ The models folder hosts all of our machine learning solutions, while the algorit
 
 ## Scripts
 
-The src/scripts folder hosts our scripts which provide varrying functinoalities from model/algorithm initialization, performance comparison, and dataset generation. To run them, right click on the script and select "Run Python File in Terminal"
+The src/scripts folder hosts our scripts which provide varrying functionalities from model/algorithm initialization, performance comparison, and dataset generation. To run them, right click on the script and select "Run Python File in Terminal"
 
 ## How to interact with this repository
 
 [link](youtube.com)
-- In your model/algorithm src folder, write the methods that will be used. To actually call the methods, go into the notebooks folder and pick an jupyter notebook environment to work out of.
+- In your model/algorithm src folder, write the methods that will be used. To actually call the methods, go into the notebooks folder and pick a jupyter notebook environment to work out of.
 - Full freedom to create/delete/edit code in your model/algorithm folder.
-- Dont change any src/script or template folders (unless your tasked with making updates to those)
+- Dont change any code in src/script, model_template/algorithm_tempalte, or model/algorithm folders that dont belong to you (unless your tasked with making updates to any of those).
 - Work in your own branch. Pull before every work session. Push after every work session. [git tutorial](youtube.com)
 
 ## Environments
