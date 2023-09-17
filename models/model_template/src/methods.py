@@ -32,7 +32,14 @@ def set_device():
     return device
 
 def upload_model_weights(model, dbx_access_token, delete=True):
-    dbx = dropbox.Dropbox(dbx_access_token)
+    if dbx_access_token == "":
+        print("Dropbox access token uninitialized. Unable to upload model weights.")
+        return
+    try:
+        dbx = dropbox.Dropbox(dbx_access_token)
+    except:
+        print("Could not connect to Dropbox when attempting to upload weights.")
+        return
     dbx_model_weight_dir = f'/UMARV/ML/model_weights/model_{os.getenv("MODEL_ID")}_weights.pth'
     local_model_weights_dir = f'{os.getenv("REPO_DIR")}/models/model_{os.getenv("MODEL_ID")}/content/weights.pth'   
     torch.save(model.state_dict(), local_model_weights_dir)
@@ -43,7 +50,14 @@ def upload_model_weights(model, dbx_access_token, delete=True):
         os.remove(local_model_weights_dir)
 
 def download_model_weights(model, dbx_access_token, delete=True):
-    dbx = dropbox.Dropbox(dbx_access_token)
+    if dbx_access_token == "":
+        print("Dropbox access token uninitialized. Unable to download model weights.")
+        return
+    try:
+        dbx = dropbox.Dropbox(dbx_access_token)
+    except:
+        print("Could not connect to Dropbox when attempting to download weights. Using default weights.")
+        return model
     dbx_model_weight_dir = f'/UMARV/ML/model_weights/model_{os.getenv("MODEL_ID")}_weights.pth'
     local_model_weights_dir = f'{os.getenv("REPO_DIR")}/models/model_{os.getenv("MODEL_ID")}/content/weights.pth'   
     try:
@@ -63,8 +77,14 @@ def download_model_weights(model, dbx_access_token, delete=True):
 
 def initialize_model(device, dbx_access_token, reset_weights=False):
     model = lane_model().to(device)
-    if not reset_weights:
+    if reset_weights:
+        return model
+    if dbx_access_token == "":
+        print("Dropbox access token uninitialized. Using default weights.")
+    try:
         model = download_model_weights(model, dbx_access_token)
+    except:
+        print("Could not download model weights. Using default weights.")
     return model
 
 def create_datasets(device=None, datasets=None, benchmarks=None, include_all_datasets=True,
